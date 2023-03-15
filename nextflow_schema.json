@@ -1,64 +1,107 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
     "$id": "https://raw.githubusercontent.com/./master/nextflow_schema.json",
-    "title": "epi2me-labs/wf-template",
-    "description": "Nextflow workflow template repository.",
-    "url": "https://github.com/epi2me-labs/wf-template",
+    "title": "treangenlab/wf-emu",
+    "description": "Nextflow workflow for Emu.",
+    "url": "https://gitlab.com/treangenlab/wf-emu",
     "type": "object",
     "definitions": {
-        "basic_input_output_options": {
-            "title": "Basic Input/Output Options",
+        "basic_input_options": {
+            "title": "Basic Input Options",
             "type": "object",
             "fa_icon": "fas fa-terminal",
-            "description": "Define where the pipeline should find input data and save output data.",
+            "description": "Define where the pipeline should find input data.",
             "properties": {
-                "out_dir": {
-                    "type": "string",
-                    "default": "output",
-                    "description": "Directory for output of all user-facing files."
-                },
                 "fastq": {
                     "type": "string",
                     "format": "path",
                     "description": "A fastq file or directory containing fastq input files or directories of input files.",
-                    "help_text": "If directories named \\\"barcode*\\\" are found under the `--fastq` directory the data is assumed to be multiplex and each barcode directory will be processed independently. If `.fastq(.gz)` files are found under the `--fastq` directory the sample is assumed to not be multiplexed. In this second case `--samples` should be a simple name rather than a CSV file."
+                    "help_text": "If directories named \\\"barcode*\\\" are found under the `--fastq` directory the data is assumed to be multiplex and each barcode directory will be processed independently."
                 },
-                "sample": {
+                "type": {
                     "type": "string",
-                    "description": "A sample name for non-multiplexed data. Permissible if passing a file or directory of .fastq(.gz)."
+                    "hidden": true,
+                    "description": "Denote sequencing techonology used.",
+                    "help_text": "short-read: sr, Pac-Bio:map-pb, ONT:map-ont"
                 },
-                "sample_sheet": {
-                    "type": "string",
-                    "description": "CSV file with columns named `barcode`, `sample_name` and `type`. Permissible if passing a directory containing barcodeXX sub-directories."
+                "min_abundance": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "min species abundance in results."
                 },
-                "sanitize_fastq": {
-                    "type": "boolean",
-                    "description": "Use additional heuristics to identify barcodes from file paths.",
-                    "help_text": "Enabling this option will group together files into samples by the presence of strings of the form `barcodeXXX` present in filenames, rather than simply files grouped into directories (as output by MinKNOW and the Guppy basecaller)."
+                "threads": {
+                    "type": "integer",
+                    "hidden": true,
+                    "description": "Number of threads (cores) to utilize."
                 }
             },
             "required": [
                 "fastq"
             ]
         },
-        "meta_data": {
-            "title": "Meta Data",
+
+        "output_options": {
+            "title": "Basic Output Options",
             "type": "object",
-            "description": "",
-            "default": "",
+            "fa_icon": "fas fa-terminal",
+            "description": "Define where the pipeline should find output data.",
             "properties": {
-                "report_name": {
+                "emu_output_dir": {
                     "type": "string",
-                    "default": "report",
-                    "description": "Output report filename suffix."
+                    "format": "path",
+                    "default": "./emu-results",
+                    "description": "output directory name for emu abundances"
                 },
-                "disable_ping": {
+                "output_basename": {
+                    "type": "string",
+                    "default": "TODO",
+                    "description": "basename for all emu output files."
+                },
+                "keep_counts": {
                     "type": "boolean",
-                    "default": "false",
-                    "description": "Enable to prevent sending a workflow ping."
+                    "default": false,
+                    "description": "include estimated read counts in output."
+                },
+                "keep_files": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "keep working files (.sam alignment file) in output-dir."
+                },
+                "keep_read_assignments": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "output file of read assignment distribution."
+                },
+                "output_unclassified": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "output unclassified sequences in a separate file."
                 }
             }
         },
+
+        "reference_options": {
+            "title": "Reference Options",
+            "type": "object",
+            "description": "Files will be downloaded as part of the first run of workflow and automatically stored for subsequent runs.",
+            "default": "",
+            "properties": {
+                "database": {
+                    "type": "string",
+                    "default": "emu_default",
+                    "description": "Sets the reference database used for classifying reads. Choices: ['emu_default', 'rdp', 'silva', 'unite_fungi', 'unite_all']",
+                    "enum": [
+                        "emu_default",
+                        "rdp",
+                        "silva",
+                        "unite-fungi",
+                        "unite-all"
+                    ],
+                    "help_text": "This setting is overridable by providing an explicit database in the other reference options"
+                }
+            }
+        },
+
         "generic_options": {
             "title": "Generic options",
             "type": "object",
@@ -71,16 +114,32 @@
                     "description": "Display help text.",
                     "fa_icon": "fas fa-question-circle",
                     "hidden": true
+                },
+                "num_alignments": {
+                    "type": "integer",
+                    "default": 50,
+                    "description": "minimap max number of secondary alignments per read.",
+                    "hidden": true
+                },
+                "K": {
+                    "type": "integer",
+                    "default": 500000000,
+                    "description": "minibatch size for minimap2 mapping.",
+                    "fa_icon": "fas fa-question-circle",
+                    "hidden": true
                 }
             }
         }
     },
     "allOf": [
         {
-            "$ref": "#/definitions/basic_input_output_options"
+            "$ref": "#/definitions/basic_input_options"
         },
         {
-            "$ref": "#/definitions/meta_data"
+            "$ref": "#/definitions/output_options"
+        },
+        {
+            "$ref": "#/definitions/reference_options"
         },
         {
             "$ref": "#/definitions/generic_options"
@@ -91,7 +150,7 @@
             "type": "string",
             "description": "The main process label for template processes to use by default",
             "hidden": true,
-            "default": "wf-template"
+            "default": "wf-emu"
         },
         "aws_image_prefix": {
             "type": "string",
@@ -107,14 +166,17 @@
             "hidden": true
         },
         "monochrome_logs": {
-            "type": "boolean"
+            "type": "boolean",
+            "hidden": true
         },
         "validate_params": {
             "type": "boolean",
-            "default": true
+            "default": true,
+            "hidden": true
         },
         "show_hidden_params": {
-            "type": "boolean"
+            "type": "boolean",
+            "hidden": true
         }
     },
     "docs": {
