@@ -181,7 +181,6 @@ workflow {
     samples = fastq_ingress(
         params.fastq, params.out_dir, params.sample, params.sample_sheet, params.sanitize_fastq)
 
-    //call emu pipeline
     pipeline(samples)
     output(pipeline.out.results)
     end_ping(pipeline.out.telemetry)
