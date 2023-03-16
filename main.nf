@@ -155,7 +155,6 @@ process output {
 workflow pipeline {
     take:
         reads
-        database_stored
     main:
         summary = summariseReads(reads)
         software_versions = getVersions()
@@ -183,7 +182,7 @@ workflow {
         params.fastq, params.out_dir, params.sample, params.sample_sheet, params.sanitize_fastq)
 
     //call emu pipeline
-    pipeline(samples, params.database)
+    pipeline(samples)
     output(pipeline.out.results)
     end_ping(pipeline.out.telemetry)
 
