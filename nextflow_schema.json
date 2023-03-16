@@ -68,32 +68,7 @@
                     "type": "string",
                     "format": "path",
                     "default": "./emu-results",
-                    "description": "output directory name for emu abundances"
-                },
-                "output_basename": {
-                    "type": "string",
-                    "default": "TODO",
-                    "description": "basename for all emu output files."
-                },
-                "keep_counts": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "include estimated read counts in output."
-                },
-                "keep_files": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "keep working files (.sam alignment file) in output-dir."
-                },
-                "keep_read_assignments": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "output file of read assignment distribution."
-                },
-                "output_unclassified": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "output unclassified sequences in a separate file."
+                    "description": "subdirectory name for emu output files"
                 }
             }
         },
@@ -106,10 +81,10 @@
             "properties": {
                 "database": {
                     "type": "string",
-                    "default": "emu_default",
-                    "description": "Sets the reference database used for classifying reads. Choices: ['emu_default', 'rdp', 'silva', 'unite_fungi', 'unite_all']",
+                    "default": "emu",
+                    "description": "Sets the reference database used for classifying reads. Choices: ['emu', 'rdp', 'silva', 'unite_fungi', 'unite_all']",
                     "enum": [
-                        "emu_default",
+                        "emu",
                         "rdp",
                         "silva",
                         "unite-fungi",

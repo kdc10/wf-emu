@@ -108,7 +108,7 @@ process runEmu {
     for file in ${minimap_alignments}
     do
         echo \$file
-        emu abundance \$file --threads ${task.cpus} --output-dir ${params.emu_output_dir} --db ${database} --min-abundance ${params.min_abundance} --keep-counts --keep-read-assignments
+        emu abundance \$file --threads ${task.cpus} --output-dir ${params.emu_output_dir} --db ${database} --min-abundance ${params.min_abundance} --keep-counts --keep-read-assignments --output-unclassified
     done
     """
 }
