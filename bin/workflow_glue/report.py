@@ -42,7 +42,7 @@ def main(args):
             sample_id = args.rel_abun[0].split('_')[0]
             df = pd.read_csv(args.rel_abun[0], index_col=0, sep='\t').round(3)
             report_utils.DataTable.from_pandas(
-                df, export=True, file_name=f'wf-emu-{sample_id}_rel-abundance.tsv')
+                df, export=True, file_name=f'wf-emu-{sample_id}_rel-abundance')
         else:
             # add drowpdown tabs
             with tabs.add_dropdown_menu('Results', change_header=False):
@@ -50,7 +50,7 @@ def main(args):
                     with tabs.add_dropdown_tab(sample_id):
                         df = pd.read_csv(rel_table, index_col=0, sep='\t').round(3)
                         report_utils.DataTable.from_pandas(
-                            df, export=True, file_name=f'wf-emu-{sample_id}_rel-abundance.tsv')
+                            df, export=True, file_name=f'wf-emu-{sample_id}_rel-abundance')
 
     with report.add_section("Metadata", "Metadata"):
         tabs = Tabs()
