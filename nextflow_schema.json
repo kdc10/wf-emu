@@ -17,6 +17,11 @@
                     "format": "path",
                     "description": "FASTQ files to use in the analysis.",
                     "help_text": "This accepts one of three cases: (i) the path to a single FASTQ file; (ii) the path to a top-level directory containing FASTQ files; (iii) the path to a directory containing one level of sub-directories which in turn contain FASTQ files. In the first and second case, a sample name can be supplied with `--sample`. In the last case, the data is assumed to be multiplexed with the names of the sub-directories as barcodes. In this case, a sample sheet can be provided with `--sample_sheet`."
+                },
+                "min_abundance": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "min species abundance in results."
                 }
             },
             "required": [
@@ -92,16 +97,16 @@
             "description": "Advanced options for configuring processes inside the workflow.",
             "help_text": "These advanced options do not need to be changed for typical use, but allow fine tuning of workflows for users who want more control over the workflow.",
             "properties": {
+                "K": {
+                    "type": "integer",
+                    "default": 500000000,
+                    "description": "minibatch size for minimap2 mapping."
+                },
                 "num_alignments": {
                     "type": "integer",
                     "default": 50,
                     "description": "minimap max number of secondary alignments per read.",
                     "hidden": true
-                },
-                "K": {
-                    "type": "integer",
-                    "default": 500000000,
-                    "description": "minibatch size for minimap2 mapping."
                 },
                 "threads": {
                     "type": "integer",
@@ -170,4 +175,5 @@
         "intro": "## Introduction\n\nThis section of documentation typically contains an overview of the workflow in terms of motivation\nand bioinformatics methods, listing any key tools or algorithms employed, whilst also describing its\nrange of use-cases and what a suitable input dataset should look like.\n\n",
         "links": "## Useful links\n\n* [nextflow](https://www.nextflow.io/)\n* [docker](https://www.docker.com/products/docker-desktop)\n* [singularity](https://docs.sylabs.io/guides/latest/user-guide/)\n"
     }
+}
 }
