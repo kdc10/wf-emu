@@ -1,9 +1,10 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
     "$id": "https://raw.githubusercontent.com/./master/nextflow_schema.json",
-    "title": "treangenlab/wf-emu",
-    "description": "Nextflow workflow for Emu.",
-    "url": "https://gitlab.com/treangenlab/wf-emu",
+    "title": "epi2me-labs/wf-template",
+    "description": "Nextflow workflow template repository.",
+    "demo_url": "https://ont-exd-int-s3-euwst1-epi2me-labs.s3.amazonaws.com/wf-template/wf-template-demo.tar.gz",
+    "url": "https://github.com/epi2me-labs/wf-template",
     "type": "object",
     "definitions": {
         "input": {
@@ -18,10 +19,11 @@
                     "description": "FASTQ files to use in the analysis.",
                     "help_text": "This accepts one of three cases: (i) the path to a single FASTQ file; (ii) the path to a top-level directory containing FASTQ files; (iii) the path to a directory containing one level of sub-directories which in turn contain FASTQ files. In the first and second case, a sample name can be supplied with `--sample`. In the last case, the data is assumed to be multiplexed with the names of the sub-directories as barcodes. In this case, a sample sheet can be provided with `--sample_sheet`."
                 },
-                "min_abundance": {
-                    "type": "number",
-                    "default": 0.0001,
-                    "description": "min species abundance in results."
+                "analyse_unclassified": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Analyse unclassified reads from input directory. By default the workflow will not process reads in the unclassified directory.",
+                    "help_text": "If selected and if the input is a multiplex directory the workflow will also process the unclassified directory."
                 }
             },
             "required": [
@@ -46,36 +48,6 @@
                 }
             }
         },
-        "reference_options": {
-            "title": "Reference Options",
-            "type": "object",
-            "description": "Files will be downloaded as part of the first run of workflow and automatically stored for subsequent runs.",
-            "default": "",
-            "properties": {
-                "database_set": {
-                    "type": "string",
-                    "default": "emu",
-                    "description": "Sets the reference, databases and taxonomy datasets that will be used for classifying reads. Choices: ['emu']. Workflow will require memory available to be slightly higher than the size of the database.",
-                    "enum": [
-                        "emu"
-                    ],
-                    "help_text": "This setting is overridable by providing an explicit taxonomy, database or reference path in the other reference options"
-                },
-                "database": {
-                    "type": "string",
-                    "format": "path",
-                    "description": "Not required but can be used to specifically override kraken2 database [.tar.gz or Directory].",
-                    "help_text": "By default uses database chosen in database_set parameter"
-                },
-                "store_dir": {
-                    "type": "string",
-                    "format": "directory-path",
-                    "description": "Where to store initial download of database.",
-                    "default": "store_dir",
-                    "help_text": "database set selected will be downloaded as part of the workflow and saved in this location, on subsequent runs it will use this as the database. "
-                }
-            }
-        },
         "output": {
             "title": "Output Options",
             "type": "object",
@@ -97,25 +69,31 @@
             "description": "Advanced options for configuring processes inside the workflow.",
             "help_text": "These advanced options do not need to be changed for typical use, but allow fine tuning of workflows for users who want more control over the workflow.",
             "properties": {
+                "min_abundance": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "min species abundance in results."
+                },
                 "K": {
-                    "type": "integer",
-                    "default": 500000000,
-                    "description": "minibatch size for minimap2 mapping."
-                },
-                "num_alignments": {
-                    "type": "integer",
-                    "default": 50,
-                    "description": "minimap max number of secondary alignments per read.",
-                    "hidden": true
-                },
-                "threads": {
-                    "type": "integer",
-                    "default": 2,
-                    "description": "Number of CPU threads used for classifying reads.",
-                    "help_text": "For the real-time kraken2 workflow, this is the number of CPU threads used by the kraken2 server (and the number of clients sending reads to the server). For the minimap2 workflow, it is the number of CPU threads used by minimap2. For the real-time kraken2 workflow the `threads` parameter should not be set to no more than 4 fewer than the executor CPU limit."
-                }
+                "type": "integer",
+                "default": 500000000,
+                "description": "minibatch size for minimap2 mapping."
+            },
+            "num_alignments": {
+                "type": "integer",
+                "default": 50,
+                "description": "minimap max number of secondary alignments per read.",
+                "hidden": true
+            },
+            "threads": {
+                "type": "integer",
+                "default": 2,
+                "description": "Number of CPU threads used for classifying reads.",
+                "help_text": "For the real-time kraken2 workflow, this is the number of CPU threads used by the kraken2 server (and the number of clients sending reads to the server). For the minimap2 workflow, it is the number of CPU threads used by minimap2. For the real-time kraken2 workflow the `threads` parameter should not be set to no more than 4 fewer than the executor CPU limit."
+            }
+        }
         },
-        "miscellaneous_options": {
+        "misc": {
             "title": "Miscellaneous Options",
             "type": "object",
             "description": "Everything else.",
@@ -156,9 +134,17 @@
     "properties": {
         "process_label": {
             "type": "string",
-            "description": "The main process label for emu processes to use by default",
+            "description": "The main process label for template processes to use by default",
             "hidden": true,
-            "default": "wf-emu"
+            "default": "wf-template"
+        },
+        "aws_image_prefix": {
+            "type": "string",
+            "hidden": true
+        },
+        "aws_queue": {
+            "type": "string",
+            "hidden": true
         },
         "monochrome_logs": {
             "type": "boolean"
@@ -175,5 +161,4 @@
         "intro": "## Introduction\n\nThis section of documentation typically contains an overview of the workflow in terms of motivation\nand bioinformatics methods, listing any key tools or algorithms employed, whilst also describing its\nrange of use-cases and what a suitable input dataset should look like.\n\n",
         "links": "## Useful links\n\n* [nextflow](https://www.nextflow.io/)\n* [docker](https://www.docker.com/products/docker-desktop)\n* [singularity](https://docs.sylabs.io/guides/latest/user-guide/)\n"
     }
-}
 }
