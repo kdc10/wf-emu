@@ -14,24 +14,9 @@ import groovy.json.JsonBuilder
 nextflow.enable.dsl = 2
 
 include { fastq_ingress } from './lib/fastqingress'
-include { start_ping; end_ping } from './lib/ping'
+//include { start_ping; end_ping } from './lib/ping'
 
-
-process summariseReads {
-    // concatenate fastq and fastq.gz in a dir
-
-    label "wfemu"
-    cpus 1
-    input:
-        tuple path(directory), val(sample_id), val(type)
-    output:
-        path "${sample_id}.stats"
-    shell:
-    """
-    fastcat -s ${sample_id} -r ${sample_id}.stats -x ${directory} > /dev/null
-    """
-}
-
+OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
 
 process getVersions {
     label "wfemu"
@@ -67,71 +52,87 @@ process getParams {
 process unpackDatabase {
     label "wfemu"
     cpus 1
-    storeDir "store_dir/"
+    storeDir "${params.store_dir}/${database.simpleName}"
+    //storeDir "${params.store_dir}/"
+    input:
+        //path fasta
+        //path taxonomy
+        path database
     output:
-        path "database_dir/${params.database}"
+        path "database_dir/"
+        //wget "${database}" ADD THIS from the intrenal DB
     """
     mkdir database_dir
-    mkdir database_dir/${params.database}
-    wget -qO- https://gitlab.com/treangenlab/emu/-/archive/v3.4.2/emu-v3.4.2.tar.gz | tar -C database_dir/${params.database} -xvz --strip-components=2 emu-v3.4.2/${params.database}_database/
+    tar xvzf "${database}" -C database_dir/
     """
+    //mkdir database_dir
+    //cp "${taxonomy}" database_dir/
+    //cp "${fasta}" database_dir/
+    //"""
 }
 
 process mapReads {
     label "wfemu"
     cpus params.threads
-    publishDir "${params.out_dir}", mode: 'copy', overwrite: true
     input:
-        tuple path(directory), val(sample_id), val(type)
+        tuple val(meta), path(concat_seqs), path(fastcat_stats)
         path database
     output:
-        path "minimap-alignments/*"
+        tuple(
+            val(meta), path("*.sam"), emit: sam)
+    script:
+        def sample_id = meta["alias"]
     """
-    mkdir minimap-alignments
-    for file in ${directory}/*
-    do
-        minimap2 -ax ${params.type} -t ${params.threads} -N ${params.num_alignments} -p 0.9 -K ${params.K} "${database}/species_taxid.fasta" \${file} -o "minimap-alignments/${sample_id}.sam"
-    done
+    minimap2 -ax map-ont "${database}/species_taxid.fasta" "${concat_seqs}" -t "${task.cpus}" -N ${params.num_alignments} -p 0.9 -K ${params.K} -o "${sample_id}.sam"
     """
 }
 
 process runEmu {
     label "wfemu"
     cpus params.threads
-    publishDir "${params.out_dir}", mode: 'move', overwrite: true
+    publishDir "${params.out_dir}", mode: 'copy', overwrite: true, pattern: "*", saveAs: {name -> "emu_results"}
     input:
-        path minimap_alignments
+        tuple val(meta), path(sam)
         path database
     output:
-        path "${params.emu_output_dir}/*"
+        path "emu_results/*_read-assignment-distributions.tsv", emit: read_assignment_distributions_tsv
+        path "emu_results/*_rel-abundance.tsv", emit: rel_abundance_tsv
+        path "emu_results/*_unclassified.fa", emit: unclassified_fa
+    script:
+        def sample_id = meta["alias"]
     """
-    for file in ${minimap_alignments}
-    do
-        echo \$file
-        emu abundance \$file --threads ${task.cpus} --output-dir ${params.emu_output_dir} --db ${database} --min-abundance ${params.min_abundance} --keep-counts --keep-read-assignments --output-unclassified
-    done
+    emu abundance ${sam} --output-dir emu_results --db ${database} --min-abundance ${params.min_abundance} --output-basename ${sample_id} \
+    --keep-counts --keep-read-assignments --output-unclassified
     """
 }
-
 
 
 process makeReport {
     label "wfemu"
     input:
-        path "seqs.txt"
+        val metadata
+        path per_read_stats
+        path rel_abundance_tsv
         path "versions/*"
         path "params.json"
     output:
         path "wf-emu-*.html"
     script:
-        report_name = "wf-emu-" + params.report_name + '.html'
+        String report_name = "wf-emu-report.html"
+        String metadata = new JsonBuilder(metadata).toPrettyString()
+        String stats_args = \
+            (per_read_stats.name == OPTIONAL_FILE.name) ? "" : "--stats $per_read_stats"
     """
-    report.py $report_name \
+    echo '${metadata}' > metadata.json
+    workflow-glue report $report_name \
         --versions versions \
-        seqs.txt \
-        --params params.json
+        $stats_args \
+        --rel_abun $rel_abundance_tsv\
+        --params params.json \
+        --metadata metadata.json
     """
 }
+
 
 
 // See https://github.com/nextflow-io/nextflow/issues/1636
@@ -154,39 +155,79 @@ process output {
 // workflow module
 workflow pipeline {
     take:
-        reads
+        samples
+        database
     main:
-        summary = summariseReads(reads)
         software_versions = getVersions()
         workflow_params = getParams()
-        report = makeReport(summary, software_versions.collect(), workflow_params)
+        database = unpackDatabase(database)
+        // Initial reads QC
+        per_read_stats = samples.map {
+            it[2] ? it[2].resolve('per-read-stats.tsv') : null
+        }
+        | collectFile ( keepHeader: true )
+        | ifEmpty ( OPTIONAL_FILE )
+        metadata = samples.map { it[0] }.toList()
 
-        database = unpackDatabase()
-        minimap_alignments = mapReads(reads, database)
-        emu = runEmu(minimap_alignments, database)
+
+        // Run Minimap2
+
+        minimap_alignments = mapReads(
+                samples
+                | map { [it[0], it[1], it[2] ?: OPTIONAL_FILE ] },
+                database
+            )
+
+        emu = runEmu(
+            minimap_alignments
+            | map{[it[0], it[1]]},
+            database
+            )
+
+        // output updating files as part of this pipeline
         // TODO: add Emu pictoral Emu results to report
+        report = makeReport(
+            metadata, per_read_stats, emu.rel_abundance_tsv.collect(), software_versions.collect(), workflow_params
+        )
+
+        output(report.mix(
+            software_versions, workflow_params, emu.rel_abundance_tsv, emu.unclassified_fa, emu.read_assignment_distributions_tsv),
+        )
 
 
     emit:
-        results = summary.concat(report)
-        // TODO: use something more useful as telemetry
-        telemetry = workflow_params
+        report
+        workflow_params
+
 }
 
 
 // entrypoint workflow
 WorkflowMain.initialise(workflow, params, log)
 workflow {
-    start_ping()
-    samples = fastq_ingress(
-        params.fastq, params.out_dir, params.sample, params.sample_sheet, params.sanitize_fastq)
-
-    pipeline(samples)
-    output(pipeline.out.results)
-    end_ping(pipeline.out.telemetry)
 
 
+    // Check source param is valid
+    sources = params.database_sets
+    source_name = params.database_set
+    source_data = sources.get(source_name, false)
+    if (!sources.containsKey(source_name) || !source_data) {
+        keys = sources.keySet()
+        throw new Exception("Source $params.source is invalid, must be one of $keys")
+    }
 
+    // Grab database files
+    database_repo_path = sources[source_name]["database"]
+    database = file("${projectDir}/${database_repo_path}", type: "file", checkIfExists:true)
+    samples = fastq_ingress([
+        "input":params.fastq,
+        "sample":params.sample,
+        "sample_sheet":params.sample_sheet,
+        "analyse_unclassified":false,
+        "fastcat_stats": params.wf.fastcat_stats,
+        "fastcat_extra_args": ""])
 
+    
+    results = pipeline(samples, database)
 }
 
