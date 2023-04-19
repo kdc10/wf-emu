@@ -52,23 +52,22 @@ process getParams {
 process unpackDatabase {
     label "wfemu"
     cpus 1
-    storeDir "${params.store_dir}/${database.simpleName}"
-    //storeDir "${params.store_dir}/"
+    //storeDir "${params.store_dir}/${database.simpleName}"
+    storeDir "${params.store_dir}/${params.database_set}"
     input:
         //path fasta
         //path taxonomy
-        path database
+        val database
     output:
-        path "database_dir/"
+        path "database_dir/${params.database_set}"
         //wget "${database}" ADD THIS from the intrenal DB
+    script:
+        def db_name = "${database}".tokenize('/').last()
     """
     mkdir database_dir
-    tar xvzf "${database}" -C database_dir/
+    osf -p 56uf7 fetch "${database}"
+    tar -xf "${db_name}" -C database_dir/
     """
-    //mkdir database_dir
-    //cp "${taxonomy}" database_dir/
-    //cp "${fasta}" database_dir/
-    //"""
 }
 
 process mapReads {
@@ -160,6 +159,7 @@ workflow pipeline {
     main:
         software_versions = getVersions()
         workflow_params = getParams()
+
         database = unpackDatabase(database)
         // Initial reads QC
         per_read_stats = samples.map {
@@ -217,8 +217,9 @@ workflow {
     }
 
     // Grab database files
-    database_repo_path = sources[source_name]["database"]
-    database = file("${projectDir}/${database_repo_path}", type: "file", checkIfExists:true)
+    database = sources[source_name]["database"]
+    //database = file("${projectDir}/${database_repo_path}", type: "file", checkIfExists:true)
+
     samples = fastq_ingress([
         "input":params.fastq,
         "sample":params.sample,

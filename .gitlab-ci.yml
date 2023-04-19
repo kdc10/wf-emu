@@ -4,8 +4,42 @@ include:
       file: "wf-containers.yaml"
 
 variables:
-    # Workflow inputs given to nextflow.
-    # The workflow should define `--out_dir`, the CI template sets this.
-    # Only common file inputs and option values need to be given here
-    # (not things such as -profile)
+    # We'll use the single-file case for these runs
     NF_WORKFLOW_OPTS: "--fastq test_data/reads.fastq.gz"
+    CI_FLAVOUR: "new" # set to "classic" for old-style CI
+    TEST_CMD: "bash test/run_fastq_ingress_test.sh"
+    #S3_TEST_DATA: "s3://ont-exd-int-s3-euwst1-epi2me-labs/wf-template/cw-1019/test_data"
+
+
+# Remove this block in downstream templates
+singularity-run:
+    tags: [] # no need for big ram
+# end
+
+
+docker-run:
+
+    # Remove this directive in downstream templates
+    tags: [] # no need for big ram
+
+    # Define a 1D job matrix to inject a variable named MATRIX_NAME into
+    #   the CI environment, we can use the value of MATRIX_NAME to determine
+    #   which options to apply as part of the rules block below
+    # NOTE There is a slightly cleaner way to define this matrix to include
+    #   the variables, but it is broken when using long strings! See CW-756
+    parallel:
+        matrix:
+            # TODO: do we really need to run all from s3?
+            - MATRIX_NAME: [
+                "single-file"
+                ]
+    rules:
+        # NOTE As we're overriding the rules block for the included docker-run
+        #   we must redefine this CI_COMMIT_BRANCH rule to prevent docker-run
+        #   being incorrectly scheduled for "detached merge request pipelines" etc.
+        - if: ($CI_COMMIT_BRANCH == null || $CI_COMMIT_BRANCH == "dev-template")
+          when: never
+        - if: $MATRIX_NAME == "single-file"
+          variables:
+              NF_WORKFLOW_OPTS: "--fastq test_data/reads.fastq.gz"
+              AFTER_NEXTFLOW_CMD: $TEST_CMD test_data/reads.fastq.gz $$PWD/$$CI_PROJECT_NAME
