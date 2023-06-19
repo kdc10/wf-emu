@@ -19,7 +19,7 @@ include { fastq_ingress } from './lib/fastqingress'
 OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
 
 process getVersions {
-    label "wfemu"
+    label "wfcommon"
     cpus 1
     output:
         path "versions.txt"
@@ -37,7 +37,7 @@ process getVersions {
 
 
 process getParams {
-    label "wfemu"
+    label "wfcommon"
     cpus 1
     output:
         path "params.json"
@@ -99,15 +99,18 @@ process runEmu {
         path "emu_results/*_unclassified.fa", emit: unclassified_fa
     script:
         def sample_id = meta["alias"]
+        def output_unclassified = "${params.output_unclassified}"!= null ? "--output-unclassified" : ""
+        def keep_read_assignments = "${params.keep_read_assignments}"!= null ? "--keep-read-assignments" : ""
+        def keep_counts = "${params.keep_counts}"!= null ? "--keep-counts" : ""
     """
     emu abundance ${sam} --output-dir emu_results --db ${database} --min-abundance ${params.min_abundance} --output-basename ${sample_id} \
-    --keep-counts --keep-read-assignments --output-unclassified
+    ${keep_counts} ${keep_read_assignments} ${output_unclassified}
     """
 }
 
 
 process makeReport {
-    label "wfemu"
+    label "wfcommon"
     input:
         val metadata
         path per_read_stats
@@ -139,7 +142,7 @@ process makeReport {
 // decoupling the publish from the process steps.
 process output {
     // publish inputs to output directory
-    label "wfemu"
+    label "wfcommon"
     publishDir "${params.out_dir}", mode: 'copy', pattern: "*"
     input:
         path fname
