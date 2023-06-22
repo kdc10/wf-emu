@@ -5,16 +5,26 @@ include:
 
 variables:
     # We'll use the single-file case for these runs
-    NF_WORKFLOW_OPTS: "--fastq test_data/reads.fastq.gz"
+    NF_WORKFLOW_OPTS: "--fastq test_data/case01"
     CI_FLAVOUR: "new" # set to "classic" for old-style CI
     TEST_CMD: "bash test/run_fastq_ingress_test.sh"
-    #S3_TEST_DATA: "s3://ont-exd-int-s3-euwst1-epi2me-labs/wf-template/cw-1019/test_data"
+
+
 
 
 # Remove this block in downstream templates
 singularity-run:
     tags: [] # no need for big ram
 # end
+
+aws-run:
+    artifacts:
+        when: always
+        paths:
+            - ${CI_PROJECT_NAME}
+            - .nextflow.log
+        exclude: [] # give me everything pal
+    allow_failure: true
 
 
 docker-run:
@@ -31,7 +41,7 @@ docker-run:
         matrix:
             # TODO: do we really need to run all from s3?
             - MATRIX_NAME: [
-                "single-file"
+                "single-file", "emu", "combine-counts-genus"
                 ]
     rules:
         # NOTE As we're overriding the rules block for the included docker-run
@@ -41,5 +51,10 @@ docker-run:
           when: never
         - if: $MATRIX_NAME == "single-file"
           variables:
-              NF_WORKFLOW_OPTS: "--fastq test_data/reads.fastq.gz"
-              AFTER_NEXTFLOW_CMD: $TEST_CMD test_data/reads.fastq.gz $$PWD/$$CI_PROJECT_NAME
+              NF_WORKFLOW_OPTS: "--fastq test_data/case01/S1/Zymo_ONT.fastq.gz"
+        - if: $MATRIX_NAME == "emu"
+          variables:
+              NF_WORKFLOW_OPTS: "--fastq test_data/case01/"
+        - if: $MATRIX_NAME == "combine-counts-genus"
+          variables:
+              NF_WORKFLOW_OPTS: "--fastq test_data/case01/ --rank genus --split_tables --counts"
