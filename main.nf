@@ -26,12 +26,25 @@ process getVersions {
     script:
     """
     python --version | sed 's/^/python,/' >> versions.txt
-    emu --version | sed 's/^/emu,/' >> versions.txt
-    minimap2 --version | sed 's/^/minimap2,/' >> versions.txt
     fastcat --version | sed 's/^/fastcat,/' >> versions.txt
     python -c "import pysam; print(f'pysam,{pysam.__version__}')" >> versions.txt
     python -c "import numpy; print(f'numpy,{numpy.__version__}')" >> versions.txt
     python -c "import pandas; print(f'pandas,{pandas.__version__}')" >> versions.txt
+    """
+}
+
+process addEmuToVersions {
+    label "wfemu"
+    cpus 1
+    input:
+        path "common_versions.txt"
+    output:
+        path "versions.txt"
+    script:
+    """
+    emu --version | sed 's/^/emu,/' >> common_versions.txt
+    minimap2 --version | sed 's/^/minimap2,/' >> common_versions.txt
+    mv common_versions.txt versions.txt
     """
 }
 
@@ -89,14 +102,17 @@ process mapReads {
 process runEmu {
     label "wfemu"
     cpus params.threads
-    publishDir "${params.out_dir}", mode: 'copy', overwrite: true, pattern: "*", saveAs: {name -> "emu_results"}
     input:
         tuple val(meta), path(sam)
         path database
     output:
-        path "emu_results/*_read-assignment-distributions.tsv", emit: read_assignment_distributions_tsv
-        path "emu_results/*_rel-abundance.tsv", emit: rel_abundance_tsv
-        path "emu_results/*_unclassified.fa", emit: unclassified_fa
+        tuple(
+        val(meta),
+        path("emu_results/*_read-assignment-distributions.tsv"),
+        path("emu_results/*_rel-abundance.tsv"),
+        path("emu_results/*_unclassified.fa"),
+        emit:emu_results)
+
     script:
         def sample_id = meta["alias"]
         def output_unclassified = "${params.output_unclassified}"!= null ? "--output-unclassified" : ""
@@ -109,6 +125,21 @@ process runEmu {
 }
 
 
+process combineOutput {
+    label "wfemu"
+    cpus params.threads
+    input:
+        path emu_results
+    output:
+        path "*.tsv" , emit: combine_output
+    script:
+        def split_tables = params.split_tables ? "--split-tables" : ""
+        def counts = params.counts ? "--counts" : ""
+    """
+    emu combine-outputs . ${params.rank} ${counts} ${split_tables}
+    """
+}
+
 process makeReport {
     label "wfcommon"
     input:
@@ -118,7 +149,7 @@ process makeReport {
         path "versions/*"
         path "params.json"
     output:
-        path "wf-emu-*.html"
+        path "wf-emu-*.html", emit: report_html
     script:
         String report_name = "wf-emu-report.html"
         String metadata = new JsonBuilder(metadata).toPrettyString()
@@ -143,13 +174,17 @@ process makeReport {
 process output {
     // publish inputs to output directory
     label "wfcommon"
-    publishDir "${params.out_dir}", mode: 'copy', pattern: "*"
+    publishDir (
+        params.out_dir,
+        mode: "copy",
+        saveAs: { dirname ? "$dirname/$fname" : fname }
+    )
     input:
-        path fname
+        tuple path(fname), val(dirname)
     output:
         path fname
     """
-    echo "Writing output files."
+    echo "Writing output files"
     """
 }
 
@@ -160,7 +195,8 @@ workflow pipeline {
         samples
         database
     main:
-        software_versions = getVersions()
+        common_versions = getVersions()
+        software_versions = addEmuToVersions(common_versions)
         workflow_params = getParams()
 
         database = unpackDatabase(database)
@@ -186,22 +222,37 @@ workflow pipeline {
             | map{[it[0], it[1]]},
             database
             )
+        
+        emu_rel_abun = emu.emu_results.map { it[2] }.collect()
+        combine_output = combineOutput(emu_rel_abun)
 
-        // output updating files as part of this pipeline
-        // TODO: add Emu pictoral Emu results to report
         report = makeReport(
-            metadata, per_read_stats, emu.rel_abundance_tsv.collect(), software_versions.collect(), workflow_params
+            metadata,
+            per_read_stats,
+            emu_rel_abun,
+            software_versions,
+            workflow_params
         )
 
-        output(report.mix(
-            software_versions, workflow_params, emu.rel_abundance_tsv, emu.unclassified_fa, emu.read_assignment_distributions_tsv),
+
+        ch_to_publish = Channel.empty()
+        | mix(
+            software_versions,
+            workflow_params,
+            report.report_html,
+            combine_output.combine_output | flatten,
         )
+        | map { [it, null] }
 
-
+        ch_to_publish = ch_to_publish | mix (
+            emu.emu_results | map { meta, read_assignment, rel_abundance, unclassified  -> [rel_abundance, "rel_abun"]},
+            emu.emu_results | map { meta, read_assignment, rel_abundance, unclassified -> [unclassified, "unclassified"]},
+            emu.emu_results | map { meta, read_assignment, rel_abundance, unclassified -> [read_assignment, "read_assignment"]},
+        )
+    
+        ch_to_publish | output
     emit:
         report
-        workflow_params
-
 }
 
 
@@ -221,7 +272,6 @@ workflow {
 
     // Grab database files
     database = sources[source_name]["database"]
-    //database = file("${projectDir}/${database_repo_path}", type: "file", checkIfExists:true)
 
     samples = fastq_ingress([
         "input":params.fastq,
