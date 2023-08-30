@@ -65,15 +65,11 @@ process getParams {
 process unpackDatabase {
     label "wfemu"
     cpus 1
-    //storeDir "${params.store_dir}/${database.simpleName}"
     storeDir "${params.store_dir}/${params.database_set}"
     input:
-        //path fasta
-        //path taxonomy
         val database
     output:
         path "database_dir/${params.database_set}"
-        //wget "${database}" ADD THIS from the intrenal DB
     script:
         def db_name = "${database}".tokenize('/').last()
     """
@@ -95,7 +91,7 @@ process mapReads {
     script:
         def sample_id = meta["alias"]
     """
-    minimap2 -ax map-ont "${database}/species_taxid.fasta" "${concat_seqs}" -t "${task.cpus}" -N ${params.num_alignments} -p 0.9 -K ${params.K} -o "${sample_id}.sam"
+    minimap2 -ax map-ont "${database}/species_taxid.fasta" "${concat_seqs}" -t "${task.cpus}" -N "${params.num_alignments}" -p 0.9 -K "${params.K}" -o "${sample_id}.sam"
     """
 }
 

@@ -70,6 +70,19 @@
             "description": "Advanced options for configuring processes inside the workflow.",
             "help_text": "These advanced options do not need to be changed for typical use, but allow fine tuning of workflows for users who want more control over the workflow.",
             "properties": {
+                "database_set": {
+                    "type": "string",
+                    "default": "emu",
+                    "title": "Database",
+                    "description": "Set the reference database. Choices: ['emu', 'silva', 'rdp', 'unite-all', 'unite-fungi']",
+                    "enum": [
+                        "emu",
+                        "silva",
+                        "rdp",
+                        "unite-all",
+                        "unite-fungi"
+                    ]
+                },
                 "min_abundance": {
                     "type": "number",
                     "default": 0.0001,

@@ -66,57 +66,36 @@ def main(args):
                 except KeyError:
                     sys.stdout.write("'barcode' column missing")
                     sys.exit()
-                    sys.exit()
                 try:
                     aliases.append(row["alias"])
                 except KeyError:
                     sys.stdout.write("'alias' column missing")
                     sys.exit()
-                    sys.exit()
                 try:
-                    sample_types.append(row["type"])
                     sample_types.append(row["type"])
                 except KeyError:
                     pass
     except Exception as e:
         sys.stdout.write(f"Parsing error: {e}")
         sys.exit()
-        sys.exit()
 
     # check barcode and alias values are unique
     if len(barcodes) > len(set(barcodes)):
         sys.stdout.write("values in 'barcode' column not unique")
         sys.exit()
-        sys.exit()
     if len(aliases) > len(set(aliases)):
         sys.stdout.write("values in 'alias' column not unique")
         sys.exit()
-        sys.exit()
 
-    if sample_types:
     if sample_types:
         # check if "type" column has unexpected values
-        unexp_type_vals = set(sample_types) - set(allowed_sample_types)
-
         unexp_type_vals = set(sample_types) - set(allowed_sample_types)
 
         if unexp_type_vals:
             sys.stdout.write(
                 f"found unexpected values in 'type' column: {unexp_type_vals}. "
                 f"Allowed values are: {allowed_sample_types}"
-                f"Allowed values are: {allowed_sample_types}"
             )
-            sys.exit()
-
-        if args.required_sample_types:
-            for required_type in args.required_sample_types:
-                if required_type not in allowed_sample_types:
-                    sys.stdout.write(f"Not an allowed sample type: {required_type}")
-                    sys.exit()
-                if sample_types.count(required_type) < 1:
-                    sys.stdout.write(
-                        f"Sample sheet requires at least 1 of {required_type}")
-                    sys.exit()
             sys.exit()
 
         if args.required_sample_types:
@@ -136,12 +115,6 @@ def argparser():
     """Argument parser for entrypoint."""
     parser = wf_parser("check_sample_sheet")
     parser.add_argument("sample_sheet", help="Sample sheet to check")
-    parser.add_argument(
-        "--required_sample_types",
-        help="List of required sample types. Each sample type provided must "
-             "appear at least once in the sample sheet",
-        nargs="*"
-    )
     parser.add_argument(
         "--required_sample_types",
         help="List of required sample types. Each sample type provided must "

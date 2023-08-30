@@ -129,13 +129,9 @@ class NfcoreSchema {
         // Collect expected parameters from the schema
         def expectedParams = []
         def enums = [:]
-        def enums = [:]
         for (group in schemaParams) {
             for (p in group.value['properties']) {
                 expectedParams.push(p.key)
-                if (group.value['properties'][p.key].containsKey('enum')) {
-                    enums[p.key] = group.value['properties'][p.key]['enum']
-                }
                 if (group.value['properties'][p.key].containsKey('enum')) {
                     enums[p.key] = group.value['properties'][p.key]['enum']
                 }
@@ -223,9 +219,6 @@ class NfcoreSchema {
         Integer type_pad = 10
         String param_prefix = "  --"
         Integer desc_indent = max_chars + type_pad + param_prefix.length()
-        Integer type_pad = 10
-        String param_prefix = "  --"
-        Integer desc_indent = max_chars + type_pad + param_prefix.length()
         Integer dec_linewidth = 160 - desc_indent
         for (group in params_map.keySet()) {
             Integer num_params = 0
@@ -239,8 +232,6 @@ class NfcoreSchema {
                 def description = group_params.get(param).description
                 def defaultValue = group_params.get(param).default ? " [default: " + group_params.get(param).default.toString() + "]" : ''
                 def description_default = description + colors.dim + defaultValue + colors.reset
-                def param_enum = group_params.get(param).get("enum")
-                def type = param_enum ? "[choice]" : "[${group_params.get(param).type}]"
                 def param_enum = group_params.get(param).get("enum")
                 def type = param_enum ? "[choice]" : "[${group_params.get(param).type}]"
                 // Wrap long description texts
@@ -258,11 +249,6 @@ class NfcoreSchema {
                     }
                     olines += oline
                     description_default = olines.join("\n" + " " * desc_indent)
-                }
-                group_output += param_prefix + param.padRight(max_chars) + colors.dim + type.padRight(type_pad) + colors.reset + description_default + '\n'
-                // Enumerate enumerations
-                for (choice in param_enum) {
-                    group_output += (" " * desc_indent) + "* ${choice}\n"
                 }
                 group_output += param_prefix + param.padRight(max_chars) + colors.dim + type.padRight(type_pad) + colors.reset + description_default + '\n'
                 // Enumerate enumerations

@@ -160,7 +160,6 @@ def watch_path(Map margs) {
         // with repeated keys; we therefore need to transform the sample sheet data into
         // a map with the barcodes as keys)
         def ch_sample_sheet = get_sample_sheet(file(margs.sample_sheet), margs.required_sample_types)
-        def ch_sample_sheet = get_sample_sheet(file(margs.sample_sheet), margs.required_sample_types)
         | collect
         | map { it.collectEntries { [(it["barcode"]): it] } }
         // now we can use this channel to annotate all files with the corresponding info
@@ -263,7 +262,6 @@ Map parse_arguments(Map arguments) {
                 "fastcat_stats": false,
                 "fastcat_extra_args": "",
                 "required_sample_types": [],
-                "required_sample_types": [],
                 "watch_path": false],
         name: "fastq_ingress")
     return parser.parse_args(arguments)
@@ -336,7 +334,6 @@ def get_valid_inputs(Map margs){
             // filter based on sample sheet in case one was provided
             if (margs.sample_sheet) {
                 // get channel of entries in the sample sheet
-                def ch_sample_sheet = get_sample_sheet(file(margs.sample_sheet), margs.required_sample_types)
                 def ch_sample_sheet = get_sample_sheet(file(margs.sample_sheet), margs.required_sample_types)
                 // get the union of both channels (missing values will be replaced with
                 // `null`)
@@ -418,7 +415,6 @@ ArrayList get_fq_files_in_dir(Path dir) {
  * @return: channel of maps (with values in sample sheet header as keys)
  */
 def get_sample_sheet(Path sample_sheet, ArrayList required_sample_types) {
-def get_sample_sheet(Path sample_sheet, ArrayList required_sample_types) {
     // If `validate_sample_sheet` does not return an error message, we can assume that
     // the sample sheet is valid and parse it. However, because of Nextflow's
     // asynchronous magic, we might emit values from `.splitCSV()` before the
@@ -427,7 +423,6 @@ def get_sample_sheet(Path sample_sheet, ArrayList required_sample_types) {
     // in STDOUT. Thus, we use the somewhat clunky construct with `concat` and `last`
     // below. This lets the CSV channel only start to emit once the error checking is
     // done.
-    ch_err = validate_sample_sheet(sample_sheet, required_sample_types).map {
     ch_err = validate_sample_sheet(sample_sheet, required_sample_types).map {
         // check if there was an error message
         if (it) error "Invalid sample sheet: ${it}."
@@ -449,7 +444,6 @@ def get_sample_sheet(Path sample_sheet, ArrayList required_sample_types) {
  *
  * @param: path to sample sheet CSV
  * @param: list of required sample types (optional)
- * @param: list of required sample types (optional)
  * @return: string (optional)
  */
 process validate_sample_sheet {
@@ -461,11 +455,8 @@ process validate_sample_sheet {
     output: stdout
     script:
     String req_types_arg = required_sample_types ? "--required_sample_types "+required_sample_types.join(" ") : ""
-    script:
-    String req_types_arg = required_sample_types ? "--required_sample_types "+required_sample_types.join(" ") : ""
     """
     workflow-glue check_sample_sheet sample_sheet.csv $req_types_arg
     """
 }
-
 
