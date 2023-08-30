@@ -1,6 +1,5 @@
 name: emu-nf-workflow
 channels:
-    - epi2melabs
     - bioconda
     - conda-forge
     - defaults
@@ -12,8 +11,6 @@ dependencies:
     - pandas >=1.1
     - flatten-dict
     - minimap2 >=2.22
-    - fastcat
     - epi2melabs
     - emu >=3.0
     - osfclient
-    - ezcharts

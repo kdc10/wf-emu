@@ -77,23 +77,38 @@
                     "description": "Minimum species abundance in the results. Default: 0.0001."
                 },
                 "K": {
-                "type": "integer",
-                "default": 500000000,
-                "description": "minibatch size for minimap2 mapping."
-            },
-            "num_alignments": {
-                "type": "integer",
-                "default": 50,
-                "description": "minimap max number of secondary alignments per read.",
-                "hidden": true
-            },
-            "threads": {
-                "type": "integer",
-                "default": 2,
-                "description": "Number of CPU threads used for classifying reads.",
-                "help_text": "For the real-time kraken2 workflow, this is the number of CPU threads used by the kraken2 server (and the number of clients sending reads to the server). For the minimap2 workflow, it is the number of CPU threads used by minimap2. For the real-time kraken2 workflow the `threads` parameter should not be set to no more than 4 fewer than the executor CPU limit."
+                    "type": "integer",
+                    "default": 500000000,
+                    "description": "minibatch size for minimap2 mapping."
+                },
+                "num_alignments": {
+                    "type": "integer",
+                    "default": 50,
+                    "description": "minimap max number of secondary alignments per read.",
+                    "hidden": true
+                },
+                "threads": {
+                    "type": "integer",
+                    "default": 2,
+                    "description": "Number of CPU threads used for classifying reads.",
+                    "help_text": "For the real-time kraken2 workflow, this is the number of CPU threads used by the kraken2 server (and the number of clients sending reads to the server). For the minimap2 workflow, it is the number of CPU threads used by minimap2. For the real-time kraken2 workflow the `threads` parameter should not be set to no more than 4 fewer than the executor CPU limit."
+                },
+                "rank": {
+                    "type": "string",
+                    "default": "species",
+                    "description": "Combined table will only include all ranks above the specified rank according to this list: tax_id, species, genus, family, order, class, phylum, superkingdom."
+                },
+                "split_tables": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Output 2 tables: (1) abundances only at specified rank and (2) taxonomic lineages down to specified rank."
+                },
+                "counts": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Output estimated counts rather than relative abundance percentage in combined table. Only includes Emu relative abundance outputs that already have estimated counts."
+                }
             }
-        }
         },
         "misc": {
             "title": "Miscellaneous Options",
@@ -166,6 +181,6 @@
     },
     "docs": {
         "intro": "## Introduction\n\nThis section of documentation typically contains an overview of the workflow in terms of motivation\nand bioinformatics methods, listing any key tools or algorithms employed, whilst also describing its\nrange of use-cases and what a suitable input dataset should look like.\n\n",
-        "links": "## Useful links\n\n* [nextflow](https://www.nextflow.io/)\n* [docker](https://www.docker.com/products/docker-desktop)\n* [singularity](https://docs.sylabs.io/guides/latest/user-guide/)\n"
+        "links": "## Useful links\n\n* [nextflow](https://www.nextflow.io/)\n* [docker](https://www.docker.com/products/docker-desktop)\n* [conda](https://docs.conda.io/en/latest/miniconda.html)\n"
     }
 }
