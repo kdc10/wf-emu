@@ -45,6 +45,7 @@ The main options for the workflow are:
 * `disable_ping`: enable to prevent sending a workflow ping.
 
 
+
 **Workflow outputs**
 
 The primary outputs of the workflow include:
