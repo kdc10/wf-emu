@@ -34,15 +34,15 @@ nextflow run wf-emu --help
 to see the options for the workflow.
 
 The main options for the workflow are:
-*`fastq`: A fastq file or directory containing fastq input files or directories of input files.
-*`analyse_unclassified`: Set to true to generate additional output file of unclassified sequences.
-*`sample_sheet`: A CSV file used to map barcodes to sample aliases. The sample sheet can be provided when the input data is a directory containing sub-directories with FASTQ files. 
-*`sample`: A single sample name for non-multiplexed data. Permissible if passing a single .fastq(.gz) file or directory of .fastq(.gz) files.
-*`out_dir`: Specify directory for all workflow results.
-*`min_abundance`: Minimum species relative abundance in results. Species with estimated abundance below this value will be marked as not present.
-*`K`: Minibatch size for minimap2 mapping.
-*`threads`: Number of CPU threads during minimap2 alignment step.
-*`disable_ping`: enable to prevent sending a workflow ping.
+* `fastq`: A fastq file or directory containing fastq input files or directories of input files.
+* `analyse_unclassified`: Set to true to generate additional output file of unclassified sequences.
+* `sample_sheet`: A CSV file used to map barcodes to sample aliases. The sample sheet can be provided when the input data is a directory containing sub-directories with FASTQ files. 
+* `sample`: A single sample name for non-multiplexed data. Permissible if passing a single .fastq(.gz) file or directory of .fastq(.gz) files.
+* `out_dir`: Specify directory for all workflow results.
+* `min_abundance`: Minimum species relative abundance in results. Species with estimated abundance below this value will be marked as not present.
+* `K`: Minibatch size for minimap2 mapping.
+* `threads`: Number of CPU threads during minimap2 alignment step.
+* `disable_ping`: enable to prevent sending a workflow ping.
 
 
 **Workflow outputs**
