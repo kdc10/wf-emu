@@ -19,7 +19,7 @@ include { fastq_ingress } from './lib/fastqingress'
 OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
 
 process getVersions {
-    label "wfcommon"
+    label "wf_common"
     cpus 1
     output:
         path "versions.txt"
@@ -34,7 +34,7 @@ process getVersions {
 }
 
 process addEmuToVersions {
-    label "wfemu"
+    label "wf_emu"
     cpus 1
     input:
         path "common_versions.txt"
@@ -50,7 +50,7 @@ process addEmuToVersions {
 
 
 process getParams {
-    label "wfcommon"
+    label "wf_common"
     cpus 1
     output:
         path "params.json"
@@ -63,17 +63,13 @@ process getParams {
 }
 
 process unpackDatabase {
-    label "wfemu"
+    label "wf_emu"
     cpus 1
-    //storeDir "${params.store_dir}/${database.simpleName}"
     storeDir "${params.store_dir}/${params.database_set}"
     input:
-        //path fasta
-        //path taxonomy
         val database
     output:
         path "database_dir/${params.database_set}"
-        //wget "${database}" ADD THIS from the intrenal DB
     script:
         def db_name = "${database}".tokenize('/').last()
     """
@@ -84,7 +80,7 @@ process unpackDatabase {
 }
 
 process mapReads {
-    label "wfemu"
+    label "wf_emu"
     cpus params.threads
     input:
         tuple val(meta), path(concat_seqs), path(fastcat_stats)
@@ -95,12 +91,12 @@ process mapReads {
     script:
         def sample_id = meta["alias"]
     """
-    minimap2 -ax map-ont "${database}/species_taxid.fasta" "${concat_seqs}" -t "${task.cpus}" -N ${params.num_alignments} -p 0.9 -K ${params.K} -o "${sample_id}.sam"
+    minimap2 -ax map-ont "${database}/species_taxid.fasta" "${concat_seqs}" -t "${task.cpus}" -N "${params.num_alignments}" -p 0.9 -K "${params.K}" -o "${sample_id}.sam"
     """
 }
 
 process runEmu {
-    label "wfemu"
+    label "wf_emu"
     cpus params.threads
     input:
         tuple val(meta), path(sam)
@@ -126,7 +122,7 @@ process runEmu {
 
 
 process combineOutput {
-    label "wfemu"
+    label "wf_emu"
     cpus params.threads
     input:
         path emu_results
@@ -141,7 +137,7 @@ process combineOutput {
 }
 
 process makeReport {
-    label "wfcommon"
+    label "wf_common"
     input:
         val metadata
         path per_read_stats
@@ -173,7 +169,7 @@ process makeReport {
 // decoupling the publish from the process steps.
 process output {
     // publish inputs to output directory
-    label "wfcommon"
+    label "wf_common"
     publishDir (
         params.out_dir,
         mode: "copy",
