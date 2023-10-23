@@ -13,7 +13,7 @@
 import groovy.json.JsonBuilder
 nextflow.enable.dsl = 2
 
-include { fastq_ingress } from './lib/fastqingress'
+include { fastq_ingress } from './lib/ingress'
 //include { start_ping; end_ping } from './lib/ping'
 
 OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
@@ -187,6 +187,7 @@ process output {
 
 // workflow module
 workflow pipeline {
+    Pinguscript.ping_start(nextflow, workflow, params)
     take:
         samples
         database
@@ -274,10 +275,15 @@ workflow {
         "sample":params.sample,
         "sample_sheet":params.sample_sheet,
         "analyse_unclassified":false,
-        "fastcat_stats": params.wf.fastcat_stats,
+        "stats": params.wf.stats,
         "fastcat_extra_args": ""])
-
-    
     results = pipeline(samples, database)
+
+    workflow.onComplete {
+    Pinguscript.ping_complete(nextflow, workflow, params)
+    }
+    workflow.onError {
+    Pinguscript.ping_error(nextflow, workflow, params)
+    }
 }
 
