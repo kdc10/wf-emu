@@ -13,7 +13,7 @@
 import groovy.json.JsonBuilder
 nextflow.enable.dsl = 2
 
-include { fastq_ingress } from './lib/ingress'
+include { fastq_ingress; xam_ingress } from './lib/ingress'
 
 OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
 
@@ -82,11 +82,11 @@ process mapReads {
     label "wf_emu"
     cpus params.threads
     input:
-        tuple val(meta), path(concat_seqs), path(fastcat_stats)
+        tuple val(meta), path(concat_seqs), path(stats)
         path database
     output:
         tuple(
-            val(meta), path("*.sam"), emit: sam)
+            val(meta), path("*.sam"), path(stats), emit: sam)
     script:
         def sample_id = meta["alias"]
     """
@@ -94,11 +94,27 @@ process mapReads {
     """
 }
 
+//Emu uses SAM files
+process bam2sam {
+    label "wf_common"
+    cpus params.threads
+    input:
+        tuple val(meta), path(concat_seqs), path(stats)
+    output:
+        tuple(
+            val(meta), path("*.sam"), path(stats), emit: sam)
+    script:
+        def sample_id = meta["alias"]
+    """
+    samtools view -h "${concat_seqs}" > "${sample_id}.sam"
+    """
+}
+
 process runEmu {
     label "wf_emu"
     cpus params.threads
     input:
-        tuple val(meta), path(sam)
+        tuple val(meta), path(sam), path(stats)
         path database
     output:
         tuple(
@@ -139,7 +155,7 @@ process makeReport {
     label "wf_common"
     input:
         val metadata
-        path per_read_stats
+        path "read_stats/per-read-stats*.tsv.gz"
         path rel_abundance_tsv
         path "versions/*"
         path "params.json"
@@ -148,13 +164,12 @@ process makeReport {
     script:
         String report_name = "wf-emu-report.html"
         String metadata = new JsonBuilder(metadata).toPrettyString()
-        String stats_args = \
-            (per_read_stats.name == OPTIONAL_FILE.name) ? "" : "--stats $per_read_stats"
+        def stats_args = params.wf.stats ? "--read_stats read_stats/*" : ""
     """
     echo '${metadata}' > metadata.json
     workflow-glue report $report_name \
         --versions versions \
-        $stats_args \
+        ${stats_args} \
         --rel_abun $rel_abundance_tsv\
         --params params.json \
         --metadata metadata.json
@@ -189,6 +204,7 @@ workflow pipeline {
     Pinguscript.ping_start(nextflow, workflow, params)
     take:
         samples
+        input_type
         database
     main:
         common_versions = getVersions()
@@ -197,25 +213,28 @@ workflow pipeline {
 
         database = unpackDatabase(database)
         // Initial reads QC
-        per_read_stats = samples.map {
-            it[2] ? it[2].resolve('per-read-stats.tsv') : null
-        }
-        | collectFile ( keepHeader: true )
-        | ifEmpty ( OPTIONAL_FILE )
+        // bamstats files have a different name
+        per_read_stats = samples.map {it[2].resolve('*.tsv.gz')}.collect()
         metadata = samples.map { it[0] }.toList()
 
-
+        samples.view()
         // Run Minimap2
-
-        minimap_alignments = mapReads(
+        if (input_type == 'fastq') {
+            minimap_alignments = mapReads(
+                    samples
+                    | map { [it[0], it[1], it[2] ?: OPTIONAL_FILE ] },
+                    database
+            )
+        } else{
+            minimap_alignments = bam2sam(
                 samples
                 | map { [it[0], it[1], it[2] ?: OPTIONAL_FILE ] },
-                database
             )
-
+        }
+    
         emu = runEmu(
             minimap_alignments
-            | map{[it[0], it[1]]},
+            | map{[it[0], it[1], it[2]]},
             database
             )
         
@@ -256,6 +275,10 @@ workflow pipeline {
 WorkflowMain.initialise(workflow, params, log)
 workflow {
 
+    ArrayList fastcat_extra_args = []
+    if (params.min_len) { fastcat_extra_args << "-a $params.min_len" }
+    if (params.max_len) { fastcat_extra_args << "-b $params.max_len" }
+    if (params.min_read_qual) { fastcat_extra_args << "-q $params.min_read_qual" }
 
     // Check source param is valid
     sources = params.database_sets
@@ -268,21 +291,41 @@ workflow {
 
     // Grab database files
     database = sources[source_name]["database"]
-
-    samples = fastq_ingress([
-        "input":params.fastq,
-        "sample":params.sample,
-        "sample_sheet":params.sample_sheet,
-        "analyse_unclassified":false,
-        "stats": params.wf.stats,
-        "fastcat_extra_args": ""])
-    results = pipeline(samples, database)
-
-    workflow.onComplete {
-    Pinguscript.ping_complete(nextflow, workflow, params)
+    def input_type = ['fastq', 'bam'].findAll { params[it] }
+    if (input_type.size() != 1) {
+        error "Only provide one of '--fastq', '--bam'."
     }
-    workflow.onError {
-    Pinguscript.ping_error(nextflow, workflow, params)
+    input_type = input_type[0]
+
+    if (input_type == 'fastq') {
+        samples = fastq_ingress([
+            "input":params.fastq,
+            "sample":params.sample,
+            "sample_sheet":params.sample_sheet,
+            "analyse_unclassified":params.analyse_unclassified,
+            "stats": params.wf.stats,
+            "required_sample_types": [],
+            "fastcat_extra_args": fastcat_extra_args.join(" "),
+            "watch_path": false])
+    } else {
+        // if we didn't get a `--fastq`, there must have been a `--bam` (as is codified
+        // by the schema)
+        samples = xam_ingress([
+            "input":params.bam,
+            "sample":params.sample,
+            "sample_sheet":params.sample_sheet,
+            "analyse_unclassified":params.analyse_unclassified,
+            "keep_unaligned": params.wf.keep_unaligned,
+            "watch_path": false,
+            "stats": params.wf.stats,
+        ])
     }
+    results = pipeline(samples, input_type, database)
 }
 
+workflow.onComplete {
+    Pinguscript.ping_complete(nextflow, workflow, params)
+}
+workflow.onError {
+    Pinguscript.ping_error(nextflow, workflow, params)
+}

@@ -35,9 +35,9 @@ def main(args):
         ], key=lambda d: d["sample"])
 
     # Add a section with statistic per sample
-    if args.stats:
+    if args.read_stats:
         with report.add_section("Read summary", "Read summary"):
-            SeqSummary(args.stats)
+            SeqSummary(args.read_stats)
 
     # Add a section with main EMU results
     samples_tables = {table.split('_')[0]: table for table in args.rel_abun}
@@ -106,7 +106,7 @@ def argparser():
     """Argument parser for entrypoint."""
     parser = wf_parser("report")
     parser.add_argument("report", help="Report output file")
-    parser.add_argument("--stats", nargs='*', help="Fastcat per-read stats file(s).")
+    parser.add_argument("--read_stats", nargs='*', help="Fastcat per-read stats file(s).")
     parser.add_argument("--rel_abun", nargs='*', help="Relative abundance.")
     parser.add_argument(
         "--metadata", default='metadata.json',
