@@ -14,7 +14,6 @@ import groovy.json.JsonBuilder
 nextflow.enable.dsl = 2
 
 include { fastq_ingress } from './lib/ingress'
-//include { start_ping; end_ping } from './lib/ping'
 
 OPTIONAL_FILE = file("$projectDir/data/OPTIONAL_FILE")
 
