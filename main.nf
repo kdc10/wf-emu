@@ -307,18 +307,6 @@ workflow {
             "required_sample_types": [],
             "fastcat_extra_args": fastcat_extra_args.join(" "),
             "watch_path": false])
-    } else {
-        // if we didn't get a `--fastq`, there must have been a `--bam` (as is codified
-        // by the schema)
-        samples = xam_ingress([
-            "input":params.bam,
-            "sample":params.sample,
-            "sample_sheet":params.sample_sheet,
-            "analyse_unclassified":params.analyse_unclassified,
-            "keep_unaligned": params.wf.keep_unaligned,
-            "watch_path": false,
-            "stats": params.wf.stats,
-        ])
     }
     results = pipeline(samples, input_type, database)
 }
