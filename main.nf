@@ -152,7 +152,7 @@ process combineOutput {
 }
 
 process makeReport {
-    label "wf_common"
+    label "wf_metagenomics"
     input:
         val metadata
         path "read_stats/per-read-stats*.tsv.gz"
