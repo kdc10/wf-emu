@@ -14,3 +14,4 @@ dependencies:
     - epi2melabs
     - emu >=3.0
     - osfclient
+    - anytree
