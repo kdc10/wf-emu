@@ -191,13 +191,13 @@
     },
     "allOf": [
         {
-            "$ref": "#/definitions/input"
+            "$ref": "#/definitions/input_options"
         },
         {
-            "$ref": "#/definitions/samples"
+            "$ref": "#/definitions/sample_options"
         },
         {
-            "$ref": "#/definitions/output"
+            "$ref": "#/definitions/output_options"
         },
         {
             "$ref": "#/definitions/emu_advanced_options"
